@@ -19,8 +19,12 @@ def data2array(filepath):
     >>> arr.shape[0]
     100000
     """
-
-    return ...
+    arr1 = open(filepath,"r")
+    arr2 =arr1.readlines()[1:]
+    arr3 = np.arange(len(arr2),dtype=np.float)
+    for i in range(len(arr2)):
+        arr3[i] = float(arr2[i].strip())
+    return arr3
 
 
 def ends_in_9(arr):
@@ -35,5 +39,9 @@ def ends_in_9(arr):
     >>> 0 <= out <= 1
     True
     """
-
-    return ...
+    count = 0
+    for i in arr:
+        if int(i*100)%10 == 9:
+            count = count+1
+    proportion = count/len(arr)
+    return proportion
