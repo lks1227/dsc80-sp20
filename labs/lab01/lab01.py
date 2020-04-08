@@ -58,8 +58,9 @@ def median(nums):
     >>> median([1, 2, 3, 4]) == 2.5
     True
     """
+    arr = np.array(nums)
     
-    return 1
+    return np.median(arr)
 
 
 # ---------------------------------------------------------------------
@@ -82,8 +83,11 @@ def same_diff_ints(ints):
     >>> same_diff_ints([1,3,5,7,9])
     False
     """
-
-    return ...
+    for i in range(len(ints)):
+        for j in range(i+1,len(ints)):
+            if (i - j) == (ints[i]-ints[j]):
+                return True
+    return False
 
 
 # ---------------------------------------------------------------------
@@ -106,9 +110,10 @@ def prefixes(s):
     >>> prefixes('aaron')
     'aaaaaraaroaaron'
     """
-
-
-    return ...
+    Str = ""
+    for i in range(len(s)+1):
+        Str = Str+s[:i]
+    return Str
 
 
 # ---------------------------------------------------------------------
@@ -132,8 +137,15 @@ def evens_reversed(N):
     >>> evens_reversed(10)
     '10 08 06 04 02'
     """
+    result = ""
+    length = len(str(N))
+    for i in range((N//2)*2,0,-2):
+        st = str(i)
+        while len(st)<len(str(N)):
+            st = '0'+st
+        result = result+' '+st
     
-    return ...
+    return result.strip(' ')
 
 
 # ---------------------------------------------------------------------
@@ -153,8 +165,12 @@ def last_chars(fh):
     >>> last_chars(open(fp))
     'hrg'
     """
-
-    return ...
+    result = ""
+    a = fh.readlines()
+    for i in range(len(a)):
+        result = result+a[i][-2]
+    
+    return result
 
 
 # ---------------------------------------------------------------------
@@ -178,8 +194,10 @@ def arr_1(A):
     >>> np.all(out >= A)
     True
     """
+    a = np.arange(len(A))
+    a = a+1
 
-    return ...
+    return A+np.sqrt(a)
 
 
 def arr_2(A):
@@ -200,7 +218,7 @@ def arr_2(A):
     True
     """
 
-    return ...
+    return A%16==0
 
 
 def arr_3(A):
@@ -223,8 +241,10 @@ def arr_3(A):
     >>> out.max() == 0.03
     True
     """
+    a = A[:-1]
+    b = A[1:]
 
-    return ...
+    return np.round(((b-a)/a)*100)/100
 
 
 def arr_4(A):
@@ -245,8 +265,15 @@ def arr_4(A):
     >>> out == 1
     True
     """
-
-    return ...
+    a = np.full(len(A),20)
+    b = a%A
+    c = np.cumsum(b)
+    d = c>A
+    result = np.where(d == True)
+    if (len(result[0]))==0:
+        return -1
+    else:
+        return np.min(result)
 
 
 # ---------------------------------------------------------------------
@@ -272,8 +299,58 @@ def movie_stats(movies):
     >>> isinstance(out.loc['second_lowest'], str)
     True
     """
-
-    return ...
+    lst = []
+    name = []
+    try:
+        a = max(movies["Year"])-min(movies["Year"])+1
+        lst.append(a)
+        name.append('num_years')
+    except:
+        pass
+    try:
+        b = sum(movies["Number of Movies"])
+        lst.append(b)
+        name.append('tot_movies')
+    except:
+        pass
+    try:
+        c=movies["Year"][pd.Index(movies["Number of Movies"]).get_loc(min(movies["Number of Movies"]))]
+        lst.append(c)
+        name.append('yr_fewest_movies')
+    except:
+        pass
+    try:
+        d = sum(movies["Total Gross"])/len(movies)
+        lst.append(d)
+        name.append('avg_gross')
+    except:
+        pass
+    try:
+        temp = movies["Total Gross"]/movies["Number of Movies"]
+        e = movies["Year"][pd.Index(temp).get_loc(max(temp))]
+        lst.append(e)
+        name.append('highest_per_movie')
+    except:
+        pass
+    try:
+        second_smallest = movies["Total Gross"].nsmallest(2).iloc[-1]
+        f = movies["#1 Movie"][pd.Index(movies["Total Gross"]).get_loc(second_smallest)]
+        lst.append(f)
+        name.append('second_lowest')
+    except:
+        pass
+    try:
+        te = movies["#1 Movie"].str.contains('Harry Potter', regex=False)
+        index = max(list(te[te==True].index))
+        g = sum(movies["Total Gross"][:index+1])/(index+1)
+        lst.append(g)
+        name.append('avg_after_harry')
+    except:
+        pass
+    data = np.array(lst)
+    ser = pd.Series(data) 
+    ser.index = name
+    return ser
     
 
 # ---------------------------------------------------------------------
@@ -309,8 +386,29 @@ def parse_malformed(fp):
     >>> (dg == df.iloc[9:13]).all().all()
     True
     """
-
-    return ...
+    a = open(fp)
+    header = a.readline()
+    header = header.replace('\n','')
+    ls = header.split(',')
+    df = pd.DataFrame(columns = ls)
+    lst = a.readlines()
+    for i in range(len(lst)):
+        lst[i] = lst[i].replace('"','')
+        lst[i] = lst[i].replace('\n','')
+    LiST = []
+    for i in range(len(lst)):
+        l = lst[i].split(',')
+        if '' in l:
+            l.remove('')
+        LiST.append(l[0])
+        LiST.append(l[1])
+        LiST.append(float(l[2]))
+        LiST.append(float(l[3]))
+        LiST.append(l[4]+','+l[5])
+        lst[i] = LiST
+        LiST = []
+    df = pd.DataFrame(lst, columns = ls, index = range(len(lst))) 
+    return df
 
 
 # ---------------------------------------------------------------------

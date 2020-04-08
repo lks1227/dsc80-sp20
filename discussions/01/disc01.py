@@ -40,6 +40,8 @@ def ends_in_9(arr):
     True
     """
     count = 0
+    if(len(arr)==0):
+        return 0.0
     for i in arr:
         if int(i*100)%10 == 9:
             count = count+1
