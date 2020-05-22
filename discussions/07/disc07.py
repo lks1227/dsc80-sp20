@@ -1,4 +1,5 @@
 import requests
+import time
 
 
 def url_list():
@@ -11,8 +12,10 @@ def url_list():
     >>> len(url_list()) > 1
     True
     """
-
-    return ...
+    url_lis = []
+    for i in range(26):
+        url_lis.append('http://example.webscraping.com/places/default/index/'+str(i))
+    return url_lis
 
 
 def request_until_successful(url, N):
@@ -28,5 +31,8 @@ def request_until_successful(url, N):
     >>> isinstance(resp, requests.models.Response) or (resp is None)
     True
     """
-
-    return ...
+    for i in range(N):
+        request = requests.get(url)
+        if request.ok ==True:
+            return request
+    return None

@@ -20,7 +20,14 @@ def combined_seasons(df1, df2):
     True
     """
 
-    return ...
+    table = pd.merge(df1,df2,on = 'Tm',how = 'outer',suffixes=('_2017', '_2018'))
+    result = pd.DataFrame(table).set_index('Tm')
+    lst = [result['HR_2017'].max(),result['HR_2018'].max()]
+    Max = max(lst)
+    year = 2017+lst.index(Max)
+    years = str(year)
+    team = result[result['HR_'+str(year)]==Max].index.values
+    return [result,team[0]]
 
 
 def seasonal_average(df1, df2):
@@ -43,5 +50,5 @@ def seasonal_average(df1, df2):
     >>> result.loc['MIN']['HR']
     186.0
     """
-
-    return ...
+    table = pd.concat([df1,df2])
+    return table.groupby('Tm').mean()

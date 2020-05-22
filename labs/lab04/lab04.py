@@ -22,8 +22,11 @@ def latest_login(login):
     >>> result.loc[381, "Time"].hour > 12
     True
     """
+    login['Time']=login['Time'].apply(lambda x:x[-8:])
+    login['Time']=pd.to_datetime(login['Time'], format='%H:%M:%S').dt.time
+    result = login.groupby('Login Id').last()
+    return result
 
-    return ...
 
 # ---------------------------------------------------------------------
 # Question # 2
@@ -44,8 +47,17 @@ def smallest_ellapsed(login):
     >>> 18 < result.loc[1233, "Time"].days < 23
     True
     """
-
-    return ...
+    login['Time']=pd.to_datetime(login['Time'])
+    ids = login.groupby('Login Id').count()
+    ids = ids[ids['Time']>1].index.values
+    twice = login.loc[login['Login Id'].isin(ids)]
+    grps = twice.groupby('Login Id')
+    def mins(df):
+        diff_list = df['Time'].sort_values().diff()
+        return diff_list.min()
+    ser = grps.apply(mins)
+    result = pd.DataFrame({'Time':ser})
+    return result
 
 
 # ---------------------------------------------------------------------
@@ -68,7 +80,7 @@ def total_seller(df):
 
     """
     
-    return ...
+    return pd.pivot_table(df, values='Total', index=['Name'])
 
 
 def product_name(df):
@@ -83,8 +95,8 @@ def product_name(df):
     >>> out.loc["pen"].isnull().sum()
     0
     """
-    
-    return ...
+    table = pd.pivot_table(df, values='Total', index=['Product'],columns=['Name']).fillna(0)
+    return table
 
 def count_product(df):
     """
@@ -98,8 +110,8 @@ def count_product(df):
     >>> out.size
     70
     """
-    
-    return ...
+    table = pd.pivot_table(df, values='Total', index=['Product','Name'],columns=['Date']).fillna(0)
+    return table
 
 
 def total_by_month(df):
@@ -114,8 +126,9 @@ def total_by_month(df):
     >>> out.shape[1]
     5
     """
-    
-    return ...
+    df['Date']=pd.to_datetime(df['Date'])
+    df['Month'] = df['Date'].dt.month_name(locale = 'English')
+    return pd.pivot_table(df, values='Total', index=['Product','Name'],columns=['Month']).fillna(0)
 
 # ---------------------------------------------------------------------
 # Question # 4
@@ -136,8 +149,8 @@ def diff_of_means(data, col='orange'):
     >>> 0 <= out
     True
     """
-    
-    return ...
+    counts = data.groupby('Factory')[col].mean()
+    return abs(counts.at['Waco']-counts.at['Yorkville'])
 
 
 def simulate_null(data, col='orange'):
@@ -157,8 +170,26 @@ def simulate_null(data, col='orange'):
     True
     """
     
-    return ...
-
+    shuffled_orange = (
+            data[col]
+            .sample(replace=False, frac=1)
+            .reset_index(drop=True)
+        )
+    
+    shuffled = (
+            data
+            .assign(**{'Shuffled Orange': shuffled_orange})
+        )
+    
+    # compute the group differences
+    group_means = (
+            shuffled
+            .groupby('Factory')
+            .mean()
+            .loc[:, 'Shuffled Orange']
+        )
+    difference = abs(group_means.diff().iloc[-1])
+    return difference
 
 def pval_orange(data, col='orange'):
     """
@@ -176,8 +207,13 @@ def pval_orange(data, col='orange'):
     >>> 0 <= pval <= 0.1
     True
     """
-    
-    return ...
+    n_repetitions = 1000
+
+    differences = []
+    for _ in range(n_repetitions):
+        differences.append(simulate_null(data, col))
+    observed_difference = diff_of_means(data, col)
+    return np.count_nonzero(differences >= observed_difference) / n_repetitions
 
 
 # ---------------------------------------------------------------------
@@ -202,8 +238,7 @@ def ordered_colors():
     >>> all([isinstance(x[1], float) for x in out])
     True
     """
-
-    return ...
+    return [['yellow',0.0],['orange',0.053],['red', 0.246],['green', 0.474], ['purple',0.973]]
     
 
 # ---------------------------------------------------------------------
@@ -223,8 +258,7 @@ def same_color_distribution():
     True
     """
     
-    return ...
-
+    return [0.007,'Reject']
 # ---------------------------------------------------------------------
 # Question # 7
 # ---------------------------------------------------------------------
@@ -241,7 +275,7 @@ def perm_vs_hyp():
     True
     """
 
-    return ...
+    return ['P','P','H','H','P']
 
 
 # ---------------------------------------------------------------------
@@ -260,7 +294,7 @@ def after_purchase():
     True
     """
 
-    return ...
+    return ['MCAR','MD','MAR','MCAR','MAR']
 
 # ---------------------------------------------------------------------
 # Question # 9
@@ -281,7 +315,7 @@ def multiple_choice():
     True
     """
 
-    return ...
+    return ['MAR', 'MD', 'NI', 'MAR', 'MCAR']
 
 # ---------------------------------------------------------------------
 # DO NOT TOUCH BELOW THIS LINE

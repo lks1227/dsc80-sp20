@@ -16,8 +16,11 @@ def impute_with_index(dg):
     True
     """
 
-    return ...
-
+    test_keys = dg.index.values.tolist()
+    test_values = dg.index.values.tolist()
+    dic = {test_keys[i]: test_values[i] for i in range(len(test_keys))} 
+    dg['B'] = dg['B'].fillna(value = dic)
+    return dg['B']
 
 def impute_with_digit(dg):
     """
@@ -32,5 +35,11 @@ def impute_with_digit(dg):
     >>> out.isnull().sum().sum() == 0
     True
     """
-
-    return ...
+    
+    test_keys = dg.index.values.tolist()
+    test_values = (dg['A']%10).tolist()
+    dic = {test_keys[i]: test_values[i] for i in range(len(test_keys))} 
+    dg['B'] = dg['B'].fillna(value=dic)
+    dg['C'] = dg['C'].fillna(value=dic)
+    dg['D'] = dg['D'].fillna(value=dic)
+    return dg

@@ -30,8 +30,19 @@ def get_book(url):
     >>> book_string[:20] == '\\n\\n\\n\\n\\nProduced by Chu'
     True
     """
-    
-    return ...
+    urltext = requests.get(url).text
+    urltext = re.sub('\r','',urltext)
+    start = re.search('\*\*\* START OF THIS PROJECT GUTENBERG EBOOK .*\*\*\*',urltext).span()[1]
+    end = re.search('\*\*\* END OF THIS PROJECT GUTENBERG EBOOK .*\*\*\*',urltext).span()[0]
+    text = urltext[start:end]
+    robot_url = url+'/robots.txt'
+    robot_urltext = requests.get(robot_url).text
+    urltext = requests.get(url).text
+    lis = re.findall('(?<=Crawl-delay: ).*(?=\n)',robot_urltext)
+    if len(lis)>0:
+        time = int(lis[0])
+        time.sleep(time)
+    return text
     
 # ---------------------------------------------------------------------
 # Question #2
@@ -63,8 +74,21 @@ def tokenize(book_string):
     >>> '(' in tokens
     True
     """
-
-    return ...
+    lis = re.findall('(\w*|[^\w\d_\s]|\n)',book_string)
+    lis = [i for i in lis if len(i)>0]
+    lis.insert(0,'\x02')
+    i=0
+    while i < len(lis)-1:
+        if (lis[i]=='\n') & (lis[i+1]=='\n'):
+            lis[i]='\x03'
+            lis[i+1]='\x02'
+            i+=1
+            while (i+1<len(lis)) and (lis[i+1]=='\n'):
+                lis.remove(lis[i+1])
+        i+=1
+    lis = [i for i in lis if i!='\n']
+    lis.insert(len(lis),'\x03')
+    return lis
     
 # ---------------------------------------------------------------------
 # Question #3
@@ -103,7 +127,13 @@ class UniformLM(object):
         True
         """
 
-        return ...
+        remove_duplicates = list(dict.fromkeys(tokens))
+        counts = []
+        for i in remove_duplicates:
+            counts.append(1/len(remove_duplicates))
+        out = pd.Series(counts,index = remove_duplicates)
+
+        return out
     
     def probability(self, words):
         """
@@ -122,7 +152,15 @@ class UniformLM(object):
         True
         """
 
-        return ...
+        result = 1
+        for i in words:
+            if i in self.mdl:
+                result *= self.mdl[i]
+            else:
+                result *= 0
+        
+
+        return result
         
     def sample(self, M):
         """
@@ -142,7 +180,13 @@ class UniformLM(object):
         True
         """
 
-        return ...
+        string = ''
+        for i in range(M):
+            string += ' ' + np.random.choice(self.mdl.index, p = self.mdl.values)
+        
+
+        return string.lstrip()
+
 
             
 # ---------------------------------------------------------------------
@@ -178,8 +222,9 @@ class UnigramLM(object):
         >>> unig.mdl.loc['one'] == 3 / 7
         True
         """
+        out = pd.Series(tokens).value_counts(normalize=True)
 
-        return ...
+        return out
     
     def probability(self, words):
         """
@@ -198,8 +243,17 @@ class UnigramLM(object):
         >>> np.isclose(p, 0.12244897959, atol=0.0001)
         True
         """
+        result = 1
+        for i in words:
+            if i in self.mdl:
+                result *= self.mdl[i]
+            else:
+                result *= 0
+        
 
-        return ...
+        return result
+
+       
         
     def sample(self, M):
         """
@@ -218,7 +272,13 @@ class UnigramLM(object):
         True
         """
 
-        return ...
+        string = ''
+        for i in range(M):
+            string += ' ' + np.random.choice(self.mdl.index, p = self.mdl.values)
+        
+
+        return string.lstrip()
+    
         
     
 # ---------------------------------------------------------------------
@@ -266,8 +326,17 @@ class NGramLM(object):
         >>> out[2]
         ('two', 'three')
         """
-        
-        return ...
+        length = self.N
+        result = []
+        for i in range(len(tokens)-(length-1)):
+            tuple_list = []
+            j = i
+            while len(tuple_list)<length: 
+                tuple_list.append(tokens[j])
+                j+=1
+            tuple_list = tuple(tuple_list)
+            result.append(tuple_list)
+        return result
         
     def train(self, ngrams):
         """

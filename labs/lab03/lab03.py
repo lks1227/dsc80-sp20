@@ -17,7 +17,7 @@ def car_null_hypoth():
     >>> set(car_null_hypoth()) <= set(range(1,11))
     True
     """
-    return ...
+    return [3,6]
 
 
 def car_alt_hypoth():
@@ -28,7 +28,7 @@ def car_alt_hypoth():
     >>> set(car_alt_hypoth()) <= set(range(1,11))
     True
     """
-    return ...
+    return [2,5]
 
 
 def car_test_stat():
@@ -39,7 +39,7 @@ def car_test_stat():
     >>> set(car_test_stat()) <= set(range(1,5))
     True
     """
-    return ...
+    return [2,4]
 
 
 def car_p_value():
@@ -50,14 +50,14 @@ def car_p_value():
     >>> car_p_value() in [1,2,3,4,5]
     True
     """
-    return ...
+    return 3
 
 
 # ---------------------------------------------------------------------
 # Question #2
 # ---------------------------------------------------------------------
 
-def clean_apps(df):
+def clean_apps(play):
     '''
     >>> fp = os.path.join('data', 'googleplaystore.csv')
     >>> df = pd.read_csv(fp)
@@ -67,8 +67,32 @@ def clean_apps(df):
     >>> cleaned.Reviews.dtype == int
     True
     '''
-    
-    return ...
+    def Round(flo):
+        a = round(flo)
+        return a
+    play['Rating'] = play['Rating'].fillna(0)
+    play['Rating'] = play['Rating'].apply(Round)
+    def find(Str):
+        letter = Str[-1]
+        num = float(Str[:-1])
+        if letter=='M':
+            return num*1024
+        else:
+            return num
+    play['Size'] = play['Size'].apply(find)
+    def find_install(Str):
+        Str = Str.strip('+')
+        Str = Str.replace(',','')
+        return int(Str)
+    play['Installs']=play['Installs'].apply(find_install)
+    play['Type'] = play['Type'].replace('Free',1)
+    play['Type'] = play['Type'].replace('Paid',0)
+    play['Price'] = pd.to_numeric(play['Price'].str.strip('$'))
+    def find_year(Str):
+        Year = Str[-4:]
+        return int(Year)
+    play['Last Updated']=play['Last Updated'].apply(find_year)
+    return play
 
 
 def store_info(cleaned):
@@ -82,9 +106,43 @@ def store_info(cleaned):
     >>> info[2] in cleaned.Category.unique()
     True
     '''
-
-
-    return ...
+    play = cleaned.copy()
+    year = play.groupby('Last Updated').count()['App']
+    year = year[year>=100]
+    year_list = year.index.tolist()
+    rec = -float('inf')
+    first_result = ''
+    for i in year_list:
+        med = play[play['Last Updated']==i]['Rating'].median()
+        if rec<med:
+            rec=med
+            first_result = i
+    rate = play.groupby('Content Rating').count().index
+    rec = -float('inf')
+    sec_result = ''
+    for i in rate:
+        med = play[play['Content Rating']==i]['Rating'].min()
+        if rec<med:
+            rec=med
+            sec_result = i
+    rate = play.groupby('Category').count().index
+    rec = -float('inf')
+    third_result = ''
+    for i in rate:
+        med = play[play['Category']==i]['Price'].mean()
+        if rec<med:
+            rec=med
+            third_result = i
+    rate = play.groupby('Category').count()['Reviews']
+    rate = rate[rate>=1000].index
+    rec = float('inf')
+    forth_result = ''
+    for i in rate:
+        med = play[play['Category']==i]['Rating'].mean()
+        if rec>med:
+            rec=med
+            forth_result = i
+    return [first_result,sec_result,third_result,forth_result]
 
 # ---------------------------------------------------------------------
 # Question 3
@@ -101,8 +159,15 @@ def std_reviews_by_app_cat(cleaned):
     >>> np.all(abs(out.select_dtypes(include='number').mean()) < 10**-7)  # standard units should average to 0!
     True
     """
+    copy = cleaned.copy()[['Category', 'Reviews']]
+    mean =  cleaned.groupby('Category').mean()['Reviews']
+    stdev = cleaned.groupby('Category').std()['Reviews']
+    means_list = np.array(list(map(lambda x: mean[x],copy['Category'].tolist())))
+    stdev_list = np.array(list(map(lambda x: stdev[x],copy['Category'].tolist())))
 
-    return ...
+    content = (copy['Reviews'].values-means_list)/stdev_list
+    copy['Reviews'] = content
+    return copy
 
 
 def su_and_spread():
@@ -122,7 +187,7 @@ def su_and_spread():
        'VIDEO_PLAYERS', 'NEWS_AND_MAGAZINES', 'MAPS_AND_NAVIGATION']
     True
     """
-    return ...
+    return ['EQUAL','BEAUTY']
 
 
 # ---------------------------------------------------------------------
@@ -148,7 +213,24 @@ def read_survey(dirname):
     FileNotFoundError: ... 'nonexistentfile'
     """
 
-    return ...
+    first = []
+    last = []
+    company = []
+    job = []
+    email = []
+    university = []
+    for i in os.listdir(dirname):
+        df = pd.read_csv(dirname + '/' + i)
+        df.columns = np.array(list(map(lambda x: x.lower().replace('_',' '), df.columns.tolist())))
+        columns = df.columns
+        first += df['first name'].tolist()
+        last += df['last name'].tolist()
+        company +=df['current company'].tolist()
+        job+=df['job title'].tolist()
+        university += df['university'].tolist()
+        email +=df['email'].tolist()
+        result = pd.DataFrame({'first name':first,'last name':last,'current company':company,'job title':job,'email':email,'university':university})
+    return result
 
 
 def com_stats(df):
@@ -167,7 +249,15 @@ def com_stats(df):
     True
     """
 
-    return ...
+    
+    copy = df[df['email']==df['email']].copy()
+    copy['ids'] = copy['email'].apply(lambda x: x[-4:]=='.com')
+    copy = copy[copy['ids']]
+    first_name = copy['first name'].value_counts().index[0]
+    job_held = copy['job title'].value_counts().index[0]
+    university_attend = copy['university'].value_counts().index[0]
+    current_company = copy['current company'].value_counts().index[0]
+    return [first_name,job_held,university_attend,current_company]
 
 
 # ---------------------------------------------------------------------
@@ -193,9 +283,12 @@ def combine_surveys(dirname):
     ...
     FileNotFoundError: ... 'nonexistentfile'
     """
-
-    return ...
-
+    out = pd.DataFrame(index = range(1,1001))
+    for i in os.listdir(dirname):
+        df = pd.read_csv(dirname + '/' + i)
+        df = df.set_index('id')
+        out = pd.concat([out,df],axis=1)
+    return out
 
 def check_credit(df):
     """
@@ -211,8 +304,26 @@ def check_credit(df):
     >>> out.shape
     (1000, 2)
     """
-
-    return ...
+    column = df.columns
+    checker = False
+    for i in column:
+        if i!= column[0]:
+            if (df[i].count()/len(df[i]))>=0.9:
+                check= True
+    lis = (df.count(axis='columns')-1)/(len(column)-1)
+    def change(a):
+        if a<0.75:
+            return 0
+        else:
+            return 5
+    result = lis.apply(change)
+    if checker:
+        result+=1
+    name = df[column[0]]
+    frame = { 'name': name, 'extra credit': result } 
+  
+    table = pd.DataFrame(frame)
+    return table
 
 # ---------------------------------------------------------------------
 # Question # 6
@@ -232,7 +343,7 @@ def at_least_once(pets, procedure_history):
     >>> out < len(pets)
     True
     """
-    return ...
+    return len(np.unique(pd.merge(pets,procedure_history,on=['PetID'])['PetID']))
 
 
 def pet_name_by_owner(owners, pets):
@@ -252,7 +363,23 @@ def pet_name_by_owner(owners, pets):
     >>> 'Cookie' in out.values
     True
     """
-    return ...
+    merged = pd.merge(pets,owners,on='OwnerID')
+    id_list = merged[['Name_x','Name_y','OwnerID']].groupby('OwnerID').count()
+    two_or_more = id_list[id_list['Name_x']!=1].index
+    pet_nameslist = []
+    owner_name = []
+    for i in two_or_more:
+        pet_nameslist.append(merged[merged['OwnerID']==i]['Name_x'].tolist())
+        owner_name.append(merged[merged['OwnerID']==i]['Name_y'].tolist()[0])
+    ones = id_list[id_list['Name_x']==1].index
+    pet_name = []
+    owner_name_one = []
+    for i in ones:
+        pet_name.append(merged[merged['OwnerID']==i]['Name_x'].tolist()[0])
+        owner_name_one.append(merged[merged['OwnerID']==i]['Name_y'].tolist()[0])
+    petslist = pet_nameslist + pet_name
+    ownersindex = owner_name+ owner_name_one
+    return pd.Series(petslist,index=ownersindex)
 
 
 def total_cost_per_owner(owners, pets, procedure_history, procedure_detail):
@@ -273,8 +400,8 @@ def total_cost_per_owner(owners, pets, procedure_history, procedure_detail):
     >>> set(out.index) <= set(owners['OwnerID'])
     True
     """
-
-    return ...
+    merged = pd.merge(procedure_detail,procedure_history,on=['ProcedureType','ProcedureSubCode'])
+    return pd.merge(merged,pets,on='PetID').groupby('OwnerID').sum()['Price']
 
 
 

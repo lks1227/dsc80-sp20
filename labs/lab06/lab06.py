@@ -26,7 +26,7 @@ def question1():
 
     # Don't change this function body!
     # No python required; create the HTML file.
-
+ 
     return
 
 
@@ -43,7 +43,16 @@ def extract_book_links(text):
     >>> out[1] == url
     True
     """
-    return ...
+    soup = bs4.BeautifulSoup(text,features="lxml")
+    result = []
+    for i in soup.find('ol',attrs={'class':'row'}).find_all('li'):
+        if (i.find('p',attrs = {'class':'star-rating'}).get('class')[1]=='Five')|(i.find('p',attrs = {'class':'star-rating'}).get('class')[1]=='Four'):
+            st = i.find('p',attrs = {'class':'price_color'}).text
+            ind = [x.isdigit() for x in st].index(True)
+            num = float(st[ind:])
+            if num<50:
+                result.append(i.find('a').get('href'))
+    return result
 
 
 def get_product_info(text, categories):
@@ -58,7 +67,49 @@ def get_product_info(text, categories):
     >>> out['Rating']
     'Two'
     """
-    return ...
+    result = []
+    result_dict={}
+    soup = bs4.BeautifulSoup(text,features="lxml")
+    def dele(st):
+        index =0
+        for i in range(len(st)):
+            if st[i] ==' ':
+                index+=1
+            else:
+                return st[index:]
+        return st[index:]
+    for i in soup.find_all('a'):
+        att = i.attrs
+        st = att.get('href')
+        if 'category' in st:
+            result.append(soup.find('a',attrs = att).text)
+    for i in result:
+        if i in categories:
+            lst1=[]
+            lst2=[]
+            for k in soup.find_all('table'):
+                for j in k.find_all('th'):
+                    lst1.append(j.text)
+                for x in k.find_all('td'):
+                    lst2.append(x.text)
+                if lst1[0] in result_dict.keys():
+                    result_dict.update({lst1[ind]: lst2[ind] for ind in range(len(lst1))})
+                else:
+                    result_dict = {lst1[ind]: lst2[ind] for ind in range(len(lst1))} 
+            result_dict.update({'Category':i})
+            title=soup.find('title').text
+            title = title.replace(' | Books to Scrape - Sandbox','')
+            title = title.replace('\n','')
+            title = dele(title)
+            result_dict.update({'Title':title})
+            rates = soup.find('p',attrs={'class':'star-rating'}).get('class')[1]
+            result_dict.update({'Rating':rates})
+            texts = soup.find(attrs = {'name':'description'}).get('content').replace('\n','')
+            result_dict.update({'description':texts})
+    if not result_dict:
+        return None
+    else:
+        return result_dict
 
 
 def scrape_books(k, categories):
@@ -75,8 +126,30 @@ def scrape_books(k, categories):
     True
     >>> out['Title'][0] == 'Sharp Objects'
     True
-    """
-    return ...
+    """    
+    def helper(d1,d2):
+        d3 = {}
+        for (k, v) in list(d1.items())+list(d2.items()):
+            try:
+                d3[k] += [v]
+            except KeyError:
+                d3[k] = [v]
+        return d3
+    url = "http://books.toscrape.com/"
+    d1 = dict()
+    for i in range(k):
+        r = requests.get(url)   
+        urlText = r.text
+        soup = bs4.BeautifulSoup(urlText, 'html.parser')
+        lst = extract_book_links(urlText)
+        for j in lst:
+            r = requests.get(url+j)
+            urlText = r.text
+            d2 = get_product_info(urlText, categories)
+            if d2!= None:
+                d1 = helper(d1,d2)
+        url = "http://books.toscrape.com/"+list(soup.find(attrs = {'class':'next'}).children)[0].get('href')
+    return pd.DataFrame.from_dict(d1)
 
 
 # ---------------------------------------------------------------------
@@ -94,7 +167,16 @@ def stock_history(ticker, year, month):
     >>> history.label.iloc[0]
     'June 03, 19'
     """
-    return ...
+    stock_endpoint = 'https://financialmodelingprep.com/api/v3/historical-price-full/{}'
+    new_endpoint = stock_endpoint.replace('{}',ticker)
+    temp = requests.get(new_endpoint)
+    dic = json.loads(temp.content).get('historical')
+    result = pd.DataFrame()
+    for i in dic:
+        if (int(i['date'][0:4])==year)&(int(i['date'][5:7])==month):
+            df = pd.DataFrame(i,index=[0])
+            result = pd.concat([result,df],ignore_index=True)
+    return result.reset_index(drop=True)
 
 
 def stock_stats(history):
@@ -111,7 +193,9 @@ def stock_stats(history):
     >>> float(stats[1][:-1]) > 1
     True
     """
-    return ...
+    percentage = '+'+str(np.round(((history.close.iloc[-1]-history.open.iloc[0])/(history.open.iloc[0]))*100,2))+'%'
+    result = str(np.round((history.volume*((history.high+history.low)/2)/10**9).sum(),2))+'B'
+    return (percentage,result)
 
 
 # ---------------------------------------------------------------------
@@ -129,7 +213,44 @@ def get_comments(storyid):
     >>> out.loc[5, 'time'].day
     31
     """
-    return ...
+    news_endpoint = "https://hacker-news.firebaseio.com/v0/item/{}.json"
+    ids = 18344932
+    parents_points = news_endpoint.replace('{}',str(ids))
+    response = requests.get(parents_points)
+    parents = response.json()
+    stacks = []
+    parents
+    def dfs(elt, visited):
+        if elt not in visited:
+            if 'dead' in elt.keys():
+                if elt['dead']==True:
+                    pass
+                else:
+                    visited.append(elt['id'])
+            else:
+                visited.append(elt['id'])
+            try:
+                for e in elt['kids']:
+                    parents_points = news_endpoint.replace('{}',str(e))
+                    response = requests.get(parents_points)
+                    parents = response.json()
+                    dfs(parents, visited)
+            except KeyError:
+                pass
+        return visited
+    lst = dfs(parents,[])[1:]
+    lis1 = ['id','by','parent','text','time']
+    result = pd.DataFrame(columns = lis1)
+    for i in lst:
+        parents_points = news_endpoint.replace('{}',str(i))
+        response = requests.get(parents_points)
+        parents = response.json()
+        lis2 = [parents[i] for i in lis1]
+        dic = {lis1[i]:lis2[i] for i in range(len(lis1))}
+        temp = pd.DataFrame(dic,index=[0])
+        result = pd.concat([result,temp],ignore_index=True)
+    result['time']=pd.to_datetime(result['time'], unit='s')
+    return result
 
 
 # ---------------------------------------------------------------------

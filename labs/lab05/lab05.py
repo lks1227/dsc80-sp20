@@ -1,7 +1,8 @@
 import os
 import pandas as pd
 import numpy as np
-
+import datetime
+from scipy.stats import ks_2samp
 
 # ---------------------------------------------------------------------
 # Question # 1
@@ -18,7 +19,7 @@ def first_round():
     >>> out[1] is "NR" or out[1] is "R"
     True
     """
-    return ...
+    return [0.164,'NR']
 
 
 def second_round():
@@ -34,7 +35,8 @@ def second_round():
     >>> out[2] is "ND" or out[2] is "D"
     True
     """
-    return ...
+    return [0.008,'R','D']
+
 
 
 # ---------------------------------------------------------------------
@@ -54,8 +56,40 @@ def verify_child(heights):
     >>> out['child_5'] > out['child_50']
     True
     """
+    def per(heights,col):
+        check = 'father'
+        n_repetitions = 100
+        copy = heights.copy()
+        kslist = []
+        observed_ks, _ = ks_2samp(
+            copy.loc[heights[col].isnull(), check],
+            copy.loc[~heights[col].isnull(), check]
+        )
+        for _ in range(n_repetitions):
 
-    return ...
+            # shuffle the ages
+            shuffled_table = (
+                copy[check]
+                .sample(replace=False, frac=1)
+                .reset_index(drop=True)
+            )
+
+            # 
+            shuffled = (
+                copy
+                .assign(**{'Shuffled': shuffled_table})
+            )
+            ks, _ = ks_2samp(
+                shuffled.loc[shuffled[col].isnull(), 'Shuffled'],
+                shuffled.loc[~shuffled[col].isnull(), 'Shuffled']
+            )
+
+            # add it to the list of results
+            kslist.append(ks)
+        arr = np.array(kslist)
+        return np.count_nonzero(arr >= observed_ks) / len(kslist)
+    lis =[per(heights,'child_95'),per(heights,'child_90'),per(heights,'child_75'),per(heights,'child_50'),per(heights,'child_25'),per(heights,'child_10'),per(heights,'child_5')]
+    return pd.Series(lis,index=['child_95','child_90','child_75','child_50','child_25','child_10','child_5'])
 
 
 def missing_data_amounts():
@@ -67,7 +101,7 @@ def missing_data_amounts():
     True
     """
 
-    return ...
+    return [2,3]
 
 
 # ---------------------------------------------------------------------
@@ -91,8 +125,34 @@ def cond_single_imputation(new_heights):
     >>> (df.child.std() - out.std()) > 0.5
     True
     """
-
-    return ...
+    ser = new_heights.father.quantile([0.25,0.5,0.75])
+    first_quar = new_heights[new_heights['father']<ser.iloc[0]].child.mean()
+    def helper(ser,Min,Max):
+        return ser.apply(check, args=(Min,Max,))
+    def check(num,Min,Max):
+        if (num>Min) and (num<Max):
+            return True
+        else:
+            return False
+    
+    second_quar = new_heights[helper(new_heights['father'],ser.iloc[0],ser.iloc[1])].child.mean()
+    third_quar = new_heights[helper(new_heights['father'],ser.iloc[1],ser.iloc[2])].child.mean()
+    forth_quar = new_heights[new_heights['father']>ser.iloc[2]].child.mean()
+    def helper(row):
+        if row[1]!=row[1]:
+            if row[0]<ser.iloc[0]:
+                return first_quar
+            elif (row[0]<ser.iloc[1]):
+                return second_quar
+            elif (row[0]<ser.iloc[2]):
+                return third_quar
+            else:
+                return forth_quar
+        else:
+            return row[1]
+    df = new_heights[new_heights['child'].isnull()]
+    df.iloc[0]['child']=1
+    return new_heights.apply(helper,axis=1)
 
 # ---------------------------------------------------------------------
 # Question # 4
@@ -117,8 +177,16 @@ def quantitative_distribution(child, N):
     True
     """
 
-    return ...
-
+    child = child.dropna()
+    count, division = np.histogram(child,bins = 10)
+    density = count/count.sum()
+    result = []
+    for _ in range(N):
+        choice = np.random.choice(range(10),p=density)
+        rang = [division[choice],division[choice+1]]
+        num = np.random.uniform(division[choice],division[choice+1])
+        result.append(num)
+    return np.array(result)
 
 def impute_height_quant(child):
     """
@@ -137,7 +205,12 @@ def impute_height_quant(child):
     True
     """
 
-    return ...
+    def helper(ele):
+        if ele!=ele:
+            return quantitative_distribution(child, 1)[0]
+        else:
+            return ele
+    return child.apply(helper)
 
 
 # ---------------------------------------------------------------------
@@ -155,7 +228,8 @@ def answers():
     >>> len(list2)
     6
     """
-    return ...
+    return [[1,2,2,1],['https://world.taobao.com/','https://moz.com/','https://twitter.com/',
+                       '*https://www.gradescope.com','*https://www.baidu.com','*https://www.bilibili.com/']]
 
 
 

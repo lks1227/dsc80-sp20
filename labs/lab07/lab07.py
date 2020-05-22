@@ -40,7 +40,7 @@ def match_1(string):
     True
     """
     #Your Code Here
-    pattern = ...
+    pattern = '^..\[..\].*'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -72,7 +72,7 @@ def match_2(string):
     False
     """
     #Your Code Here
-    pattern = ...
+    pattern = '^\([8][5][8]\) \d{3}-\d{4}$'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -106,7 +106,7 @@ def match_3(string):
     """
     #Your Code Here
 
-    pattern = ...
+    pattern = '^[a-zA-Z \?]{5,9}\?$'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -142,7 +142,7 @@ def match_4(string):
     False
     """
     #Your Code Here
-    pattern = ...
+    pattern = '^\$[^abc]*\$[aA]+[bB]+[cC]+'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -165,7 +165,7 @@ def match_5(string):
     """
 
     #Your Code Here
-    pattern = ...
+    pattern = '^[\d\w_]*\.py$'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -188,7 +188,7 @@ def match_6(string):
     """
 
     #Your Code Here
-    pattern = ...
+    pattern = '^[a-z]*_[a-z]*$'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -209,7 +209,7 @@ def match_7(string):
     False
     """
 
-    pattern = ...
+    pattern = '^_.*_$'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -239,7 +239,7 @@ def match_8(string):
     True
     """
 
-    pattern = ...
+    pattern = '^[^O1i]*$'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -260,7 +260,7 @@ def match_9(string):
     '''
 
 
-    pattern = ...
+    pattern = '^(CA|NY)-\d{2}-(LAX|SAN|NYC)-\d{4}$'
 
     #Do not edit following code
     prog = re.compile(pattern)
@@ -287,8 +287,10 @@ def match_10(string):
     ['def']
 
     '''
-
-    return ...
+    s = string.lower()
+    s=s[:s.find('a')]+s[s.find('a')+3:]
+    s = ''.join(i for i in s if i.isalnum())
+    return re.findall('(...|..$|.$)',s)
 
 
 
@@ -311,8 +313,12 @@ def extract_personal(s):
     >>> addresses[0] == '530 High Street'
     True
     """
-
-    return ...
+    ssn_list = re.findall('\d{3}-\d{2}-\d{4}',s)
+    email_lis = re.findall('[\d\w]+@[\d\w]+.com',s)
+    lis = re.findall('bitcoin:\d\w+',s)
+    bit_lis = [i[8:] for i in lis]
+    address_lis = re.findall('\d+ [\w\s]+ Street|\d+ [\w\s]+ Drive|\d+ [\w\s]+ Avenue',s)
+    return [email_lis,ssn_list,bit_lis,address_lis]
 
 # ---------------------------------------------------------------------
 # Question # 3
@@ -330,7 +336,17 @@ def tfidf_data(review, reviews):
     >>> 'before' in out.index
     True
     """
-    return ...
+    ind = pd.Series(re.findall('[\d\w]+',review)).unique()
+    table = pd.DataFrame(index=ind,columns = 'cnt tf idf tfidf'.split(' '))
+    table = table.fillna(0)
+    lis = re.findall('[\d\w]+',review)
+    for i in lis:
+        table.loc[i,'cnt'] +=1
+    table.tf=table.cnt/len(re.findall('[\d\w]+',review))
+    for i in re.findall('[\d\w]+',review):
+        table.loc[i,'idf'] = np.log(len(reviews) / reviews.str.contains(i).sum())
+    table.tfidf = table.tf*table.idf
+    return table
 
 
 def relevant_word(out):
@@ -343,7 +359,9 @@ def relevant_word(out):
     >>> relevant_word(out) in out.index
     True
     """
-    return ...
+    m = max(out.tfidf)
+    result = out[out.tfidf==m].index[0]
+    return result
 
 
 # ---------------------------------------------------------------------
@@ -359,9 +377,10 @@ def hashtag_list(tweet_text):
     >>> (out.iloc[0] == ['NLP', 'NLP1', 'NLP1'])
     True
     """
-
-    return ...
-
+    lis = tweet_text.str.findall('#[^\s]*').loc[0]
+    for i in range(len(lis)):
+        lis[i] = lis[i].replace('#','')
+    return pd.Series([lis])
 
 def most_common_hashtag(tweet_lists):
     """
@@ -371,9 +390,29 @@ def most_common_hashtag(tweet_lists):
     >>> most_common_hashtag(test).iloc[0]
     'NLP1'
     """
-
-    return ...
-
+    dic={}
+    def compress(lis,dic):
+        for i in lis:
+            if i in dic.keys():
+                dic[i]+=1
+            else:
+                dic[i]=1
+        return lis
+    tweet_lists.apply(compress,args=(dic,))
+    if not bool(dic) :
+        return None
+    else:
+        M=max(dic.values())
+        result = list(dic.keys())[list(dic.values()).index(M)]
+    copy = tweet_lists.copy()
+    def count(lis,st):
+        occurence = 0
+        for i in lis:
+            if i == st:
+                occurence+=1
+        return occurence
+    copy = copy.apply(count,args=(result,))
+    return pd.Series([result.replace('#',''),copy.sum()])
 
 # ---------------------------------------------------------------------
 # Question # 5
@@ -392,8 +431,52 @@ def create_features(ira):
     >>> (out == ans).all().all()
     True
     """
-
-    return ...
+    def num_hashtag(lis):
+        return len(re.findall('#[^\s]*',lis))
+    def mc_hashtag(lis):
+        dic = {}
+        li = re.findall('#[^\s]+',lis)
+        
+        def compress(lis,dic):
+            for i in lis:
+                if i in dic.keys():
+                    dic[i]+=1
+                else:
+                    dic[i]=1
+            return lis
+        compress(li,dic)
+        if not bool(dic) :
+            return None
+        else:
+            M=max(dic.values())
+            result = list(dic.keys())[list(dic.values()).index(M)]
+        return result.replace('#','')
+    def num_tags(lis):
+        return len(re.findall('@[^\s]+',lis))
+    def num_links(lis):
+        return len(re.findall('https?://[^\s]+',lis))
+    def is_retweet(lis):
+        return bool(re.match('^RT',lis))
+    def clean(lis):
+        for i in re.findall('@[^\s]+',lis):
+            lis = lis.replace(i,'',1)
+        for i in re.findall('https?://[^\s]+',lis):
+            lis = lis.replace(i,'',1)
+        for i in re.findall('#[^\s]*',lis):
+            lis = lis.replace(i,'',1)
+        if bool(re.match('^RT',lis)):
+            lis = lis[2:]
+        lists = re.findall('[\d\w]+',lis)
+        st1=' '
+        string = st1.join(lists)
+        return string.lower()
+    ira['num_hashtags'] = ira['text'].apply(num_hashtag)
+    ira['mc_hashtags'] = ira['text'].apply(mc_hashtag)
+    ira['num_tags'] = ira['text'].apply(num_tags)
+    ira['num_links'] = ira['text'].apply(num_links)
+    ira['is_retweet'] = ira['text'].apply(is_retweet)
+    ira['text'] = ira['text'].apply(clean)
+    return ira
 
 # ---------------------------------------------------------------------
 # DO NOT TOUCH BELOW THIS LINE
